@@ -26,7 +26,7 @@ import { ApiResources } from "./api";
 import { ApiPipelineResources } from "./apiPipeline";
 
 interface ProtocolStackProps extends cdk.StackProps {
-  stackJSON: string;
+  stackJSON: Record<string, any>;
   firstDeploy: boolean;
 }
 
@@ -44,7 +44,7 @@ export class ProtocolStack extends cdk.Stack {
 
   constructor(scope: Construct, id: string, props: ProtocolStackProps) {
     super(scope, id, props);
-    const stackConfiguration = JSON.parse(props.stackJSON);
+    const stackConfiguration = props.stackJSON; //JSON.parse(props.stackJSON);
 
     console.log("firstDeploy", props.firstDeploy);
     console.log("stackConfiguration", stackConfiguration);
