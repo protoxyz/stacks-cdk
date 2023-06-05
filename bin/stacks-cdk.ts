@@ -3,9 +3,22 @@ import "source-map-support/register";
 import * as cdk from "aws-cdk-lib";
 import { ProtocolStack } from "../lib/stack";
 
+function parseBoolean(value: string | undefined): boolean | undefined {
+  if (value === undefined) {
+    return false;
+  }
+  if (value === "true") {
+    return true;
+  }
+  if (value === "false") {
+    return false;
+  }
+  return undefined;
+}
+
 const app = new cdk.App();
 new ProtocolStack(app, process.env.STACK_ID ?? "", {
-  firstDeploy: process.env.FIRST_DEPLOY === "true" ?? false,
+  firstDeploy: parseBoolean(process.env.FIRST_DEPLOY) ?? true,
   stackJSON: process.env.STACK_JSON ?? "",
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
