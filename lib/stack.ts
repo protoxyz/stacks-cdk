@@ -26,7 +26,7 @@ import { ApiResources } from "./api";
 import { ApiPipelineResources } from "./apiPipeline";
 
 interface ProtocolStackProps extends cdk.StackProps {
-  stackJSON: Record<string, any>;
+  stackJSON: any;
   firstDeploy: boolean;
 }
 
@@ -35,12 +35,6 @@ export class ProtocolStack extends cdk.Stack {
   postgresDatabases?: PostgresDatabaseResources[];
   apiResources?: ApiResources[];
   apiPipelineResources?: ApiPipelineResources[];
-  // databaseResources: DatabaseResources;
-  // redisResources: RedisResources;
-  // apiResources: ApiResources;
-  // apiPipelineResources: ApiPipelineResources;
-  // stacksWorkerResources: StacksWorkerResources;
-  // stacksWorkerPipelineResources: StacksWorkerPipelineResources;
 
   constructor(scope: Construct, id: string, props: ProtocolStackProps) {
     super(scope, id, props);
@@ -53,75 +47,75 @@ export class ProtocolStack extends cdk.Stack {
     this.baseResources = new BaseResources(this, "BaseResources");
     const { vpc, cluster, isolatedSubnetGroup } = this.baseResources;
 
-    // const postgresDatabases = stack.resources.filter(
-    //   (resource) => resource.type === StackResourceType.database_postgres
-    // );
+    const postgresDatabases = stackConfiguration.resources.filter(
+      (resource: any) => resource.type === "database_postgres"
+    );
 
-    // if (postgresDatabases.length > 0) {
-    //   this.postgresDatabases = postgresDatabases.map(
-    //     (postgresDatabase) =>
-    //       new PostgresDatabaseResources(this, "PostgresResources", {
-    //         vpc,
-    //         config: postgresDatabase.properties as any,
-    //       })
-    //   );
-    // }
+    if (postgresDatabases.length > 0) {
+      this.postgresDatabases = postgresDatabases.map(
+        (postgresDatabase: any) =>
+          new PostgresDatabaseResources(this, "PostgresResources", {
+            vpc,
+            config: postgresDatabase.properties as any,
+          })
+      );
+    }
 
-    // this.apiResources = [];
-    // this.apiPipelineResources = [];
+    this.apiResources = [];
+    this.apiPipelineResources = [];
 
-    //   // TODO - need to add a type to services
-    //   const apiServices = stack.services;
-    //   if (apiServices.length > 0) {
-    //     apiServices.forEach((apiService) => {
-    //       // TODO - this is a hack to get the first postgres database
-    //       const linkedDb = this
-    //         .postgresDatabases?.[0] as PostgresDatabaseResources;
+    // TODO - need to add a type to services
+    const apiServices = stackConfiguration.services;
+    if (apiServices.length > 0) {
+      apiServices.forEach((apiService: any) => {
+        // TODO - this is a hack to get the first postgres database
+        const linkedDb = this
+          .postgresDatabases?.[0] as PostgresDatabaseResources;
 
-    //       const api = new ApiResources(this, apiService.id, {
-    //         cluster,
-    //         postgres: linkedDb.postgres,
-    //         dbCredentialsSecret: linkedDb.dbCredentialsSecret,
-    //         firstDeploy: props.firstDeploy,
-    //         stack: props.stack,
-    //         config: {},
-    //       });
+        const api = new ApiResources(this, apiService.id, {
+          cluster,
+          postgres: linkedDb.postgres,
+          dbCredentialsSecret: linkedDb.dbCredentialsSecret,
+          firstDeploy: props.firstDeploy,
+          stack: stackConfiguration,
+          config: {},
+        });
 
-    //       api.addDependency(this.baseResources);
-    //       api.addDependency(linkedDb);
-    //       // api.addDependency(this.redisResources);
-    //       this.apiResources?.push(api);
+        api.addDependency(this.baseResources);
+        api.addDependency(linkedDb);
+        // api.addDependency(this.redisResources);
+        this.apiResources?.push(api);
 
-    //       // Pipeline
-    //       const apiPipeline = new ApiPipelineResources(
-    //         this,
-    //         `${apiService.id}Pipeline`,
-    //         {
-    //           repository: api.repository,
-    //           apiService: api.service,
-    //           dbCredentialsSecret: linkedDb.dbCredentialsSecret,
-    //           container: api.container,
-    //           serviceId: apiService.id,
-    //           config: {
-    //             repositoryUrl: apiService.repository.repositoryUri,
-    //             platform: apiService.platform,
-    //             rootPath: apiService.path,
-    //             installCommand: apiService.installCmd,
-    //             buildCommand: apiService.buildCmd,
-    //             startCommand: apiService.startCmd,
-    //             // branch: apiService.repository.branch,
-    //             // turboScope: apiService.turboScope,
-    //             // buildImage: apiService.buildImage,
-    //           },
-    //         }
-    //       );
+        // Pipeline
+        const apiPipeline = new ApiPipelineResources(
+          this,
+          `${apiService.id}Pipeline`,
+          {
+            repository: api.repository,
+            apiService: api.service,
+            dbCredentialsSecret: linkedDb.dbCredentialsSecret,
+            container: api.container,
+            serviceId: apiService.id,
+            config: {
+              repositoryUrl: apiService.repository.repositoryUri,
+              platform: apiService.platform,
+              rootPath: apiService.path,
+              installCommand: apiService.installCmd,
+              buildCommand: apiService.buildCmd,
+              startCommand: apiService.startCmd,
+              // branch: apiService.repository.branch,
+              // turboScope: apiService.turboScope,
+              // buildImage: apiService.buildImage,
+            },
+          }
+        );
 
-    //       apiPipeline.addDependency(this.baseResources);
-    //       apiPipeline.addDependency(linkedDb);
-    //       apiPipeline.addDependency(api);
+        apiPipeline.addDependency(this.baseResources);
+        apiPipeline.addDependency(linkedDb);
+        apiPipeline.addDependency(api);
 
-    //       this.apiPipelineResources?.push(apiPipeline);
-    //     });
-    //   }
+        this.apiPipelineResources?.push(apiPipeline);
+      });
+    }
   }
 }
