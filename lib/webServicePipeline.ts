@@ -20,11 +20,12 @@ const DEFAULT_START_COMMAND = `node ./apps/api/dist/index.js`;
 const DEFAULT_SCOPE = "api";
 const DEFAULT_BUILD_IMAGE = codebuild.LinuxBuildImage.AMAZON_LINUX_2_4;
 
-interface ApiPipelineResourcesProps extends cdk.NestedStackProps {
+interface WebServicePipelineProps extends cdk.NestedStackProps {
   repository: ecr.Repository;
   apiService: ecs_patterns.ApplicationLoadBalancedFargateService;
-  dbCredentialsSecret: secretsmanager.Secret;
+  // dbCredentialsSecret: secretsmanager.Secret;
   container: ecs.ContainerDefinition;
+  stackId: string;
   serviceId: string;
   config: {
     repositoryUrl: string;
@@ -38,12 +39,11 @@ interface ApiPipelineResourcesProps extends cdk.NestedStackProps {
     buildImage?: codebuild.IBuildImage | undefined | null;
   };
 }
-export class ApiPipelineResources extends cdk.NestedStack {
-  constructor(scope: Construct, id: string, props: ApiPipelineResourcesProps) {
+export class WebServicePipeline extends cdk.NestedStack {
+  constructor(scope: Construct, id: string, props: WebServicePipelineProps) {
     super(scope, id, props);
 
-    const { repository, apiService, dbCredentialsSecret, container, config } =
-      props;
+    const { repository, apiService, container, config } = props;
     const [owner, repo] = config.repositoryUrl.split("/").slice(-2);
     const branch = config.branch || DEFAULT_BRANCH;
     const rootPath = config.rootPath || DEFAULT_ROOT_PATH;
@@ -60,9 +60,9 @@ export class ApiPipelineResources extends cdk.NestedStack {
       actionName: "GitHub_Source",
       owner, // Replace with your GitHub username
       repo, // Replace with your GitHub repo name
-      oauthToken: cdk.SecretValue.secretsManager(
-        `/stacks/${props.serviceId}/githubToken`
-      ),
+      oauthToken: cdk.SecretValue.secretsManager(`/stacks/${props.stackId}`, {
+        jsonField: `services/${props.serviceId}/githubToken`,
+      }),
       output: sourceOutput,
       branch, // Replace with your GitHub branch
     });
@@ -157,7 +157,7 @@ export class ApiPipelineResources extends cdk.NestedStack {
           "secretsmanager:ListSecretVersionIds",
         ],
         resources: [
-          dbCredentialsSecret.secretArn,
+          // dbCredentialsSecret.secretArn,
           "arn:aws:secretsmanager:us-east-1:236720586719:secret:dockerhub/credentials-vIPh7u",
         ],
       })

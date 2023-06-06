@@ -3,13 +3,18 @@ import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ecs from "aws-cdk-lib/aws-ecs";
 import * as ecs_patterns from "aws-cdk-lib/aws-ecs-patterns";
 import * as ecr from "aws-cdk-lib/aws-ecr";
-import * as rds from "aws-cdk-lib/aws-rds";
-import * as secretsmanager from "aws-cdk-lib/aws-secretsmanager";
 import * as route53 from "aws-cdk-lib/aws-route53";
 import * as route53_targets from "aws-cdk-lib/aws-route53-targets";
 import * as certificates from "aws-cdk-lib/aws-certificatemanager";
 
+import {
+  Stack,
+  StackResourceType,
+  StackServiceEnvironmentVariable,
+  StackWebServiceConfig,
+} from "@protoxyz/core";
 import { Construct } from "constructs";
+import { LinkedResources } from "./types";
 
 const DEFAULT_CPU = 256;
 const DEFAULT_MEMORY_LIMIT_MIB = 512;
@@ -24,41 +29,30 @@ const DEFAULT_MEMORY_SCALING_COOLDOWN_IN = 60;
 const DEFAULT_MEMORY_SCALING_COOLDOWN_OUT = 60;
 const DEFAULT_CONTAINER_PORT = "4000";
 
-interface ApiResourcesProps extends cdk.NestedStackProps {
+interface WebServiceProps extends cdk.NestedStackProps {
   cluster: ecs.Cluster;
-  postgres: rds.DatabaseInstance;
-  dbCredentialsSecret: secretsmanager.ISecret;
+  // postgres: rds.DatabaseInstance;
+  // dbCredentialsSecret: secretsmanager.ISecret;
+  linkedResources: LinkedResources;
   firstDeploy: boolean;
-  stack: any;
-  config: {
-    port?: string | undefined;
-    cpu?: number | undefined;
-    memoryLimitMiB?: number | undefined;
-    desiredCount?: number | undefined;
-    minCapacity?: number | undefined;
-    maxCapacity?: number | undefined;
-    cpuScalingTargetPercent?: number | undefined;
-    cpuScalingCooldownIn?: number | undefined;
-    cpuScalingCooldownOut?: number | undefined;
-    memoryScalingTargetPercent?: number | undefined;
-    memoryScalingCooldownIn?: number | undefined;
-    memoryScalingCooldownOut?: number | undefined;
-  };
+  stack: Stack;
+  environment: StackServiceEnvironmentVariable[];
+  config: StackWebServiceConfig;
 }
-export class ApiResources extends cdk.NestedStack {
+export class WebService extends cdk.NestedStack {
   repository: ecr.Repository;
   logging: ecs.AwsLogDriver;
   taskDefinition: ecs.FargateTaskDefinition;
   container: ecs.ContainerDefinition;
   service: ecs_patterns.ApplicationLoadBalancedFargateService;
   route53Record: route53.ARecord;
-  serviceSecrets: secretsmanager.Secret;
+  // serviceSecrets: secretsmanager.Secret;
 
-  constructor(scope: Construct, id: string, props: ApiResourcesProps) {
+  constructor(scope: Construct, id: string, props: WebServiceProps) {
     super(scope, id, props);
-    const { postgres, cluster, dbCredentialsSecret, config } = props;
+    const { cluster, config, linkedResources } = props;
 
-    this.repository = new ecr.Repository(this, `${id}Repository`, {
+    this.repository = new ecr.Repository(this, `${id}.Repository`, {
       autoDeleteImages: true,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
@@ -70,7 +64,7 @@ export class ApiResources extends cdk.NestedStack {
 
     const port = config.port ?? DEFAULT_CONTAINER_PORT;
     const cpu = config.cpu ?? DEFAULT_CPU;
-    const memoryLimitMiB = config.memoryLimitMiB ?? DEFAULT_MEMORY_LIMIT_MIB;
+    const memoryLimitMiB = config.memory ?? DEFAULT_MEMORY_LIMIT_MIB;
     const desiredCount = config.desiredCount ?? DEFAULT_DESIRED_COUNT;
     const minCapacity = config.minCapacity ?? DEFAULT_SCALING_MIN;
     const maxCapacity = config.maxCapacity ?? DEFAULT_SCALING_MAX;
@@ -94,9 +88,9 @@ export class ApiResources extends cdk.NestedStack {
       memoryLimitMiB,
     });
 
-    this.serviceSecrets = new secretsmanager.Secret(this, `${id}Secrets`, {
-      secretName: `/services/${id}/secrets/production`,
-    });
+    // this.serviceSecrets = new secretsmanager.Secret(this, `${id}Secrets`, {
+    //   secretName: `/services/${id}/secrets/production`,
+    // });
 
     // const pxyzApiSecrets = secretsmanager.Secret.fromSecretCompleteArn(
     //     this,
@@ -125,6 +119,41 @@ export class ApiResources extends cdk.NestedStack {
       "pxyz-hello-world"
     );
 
+    let linkedResourceSecrets = {} as { [key: string]: ecs.Secret };
+    let linkedResourceEnvVars = {} as { [key: string]: string };
+
+    for (const key in linkedResources) {
+      const linkedResource = linkedResources[key];
+
+      switch (linkedResource.stackResource.type) {
+        case StackResourceType.database_postgres:
+          {
+            const creds = linkedResource.resource.creds;
+
+            linkedResourceSecrets[`${linkedResource.envVar.key}_DB_USERNAME`] =
+              ecs.Secret.fromSecretsManager(creds, "username");
+            linkedResourceSecrets[`${linkedResource.envVar.key}_DB_PASSWORD`] =
+              ecs.Secret.fromSecretsManager(creds, "password");
+
+            linkedResourceEnvVars[`${linkedResource.envVar.key}_DB_HOST`] =
+              linkedResource.resource.postgres.instanceEndpoint.hostname;
+            linkedResourceEnvVars[`${linkedResource.envVar.key}_DB_PORT`] =
+              linkedResource.resource.postgres.instanceEndpoint.port.toString();
+            linkedResourceEnvVars[`${linkedResource.envVar.key}_DB_NAME`] =
+              linkedResource.resource.postgres.instanceIdentifier;
+          }
+          break;
+        case StackResourceType.cache_redis:
+          {
+            linkedResourceEnvVars[`${linkedResource.envVar.key}_REDIS_HOST`] =
+              linkedResource.resource.attrRedisEndpointAddress;
+            linkedResourceEnvVars[`${linkedResource.envVar.key}_REDIS_PORT`] =
+              linkedResource.resource.attrRedisEndpointPort;
+          }
+          break;
+      }
+    }
+
     this.container = this.taskDefinition.addContainer(`${id}Container`, {
       memoryLimitMiB,
       image: props.firstDeploy
@@ -132,39 +161,29 @@ export class ApiResources extends cdk.NestedStack {
         : ecs.ContainerImage.fromEcrRepository(this.repository),
 
       secrets: {
-        DB_USERNAME: ecs.Secret.fromSecretsManager(
-          dbCredentialsSecret,
-          "username"
-        ),
-        DB_PASSWORD: ecs.Secret.fromSecretsManager(
-          dbCredentialsSecret,
-          "password"
-        ),
+        ...linkedResourceSecrets,
       },
       environment: {
         NODE_ENV: "production",
         PROTOCOL_ENV: "production",
 
-        PROTOCOL_ORGANIZATION_ID: props.stack.project.organization.id,
-        PROTOCOL_ORGANIZATION_NAME: props.stack.project.organization.name,
-        PROTOCOL_PROJECT_ID: props.stack.project.id,
-        PROTOCOL_PROJECT_NAME: props.stack.project.name,
-        PROTOCOL_STACK_ID: props.stack.id,
-        PROTOCOL_STACK_NAME: props.stack.name,
+        PROTOCOL_ORGANIZATION_ID: props.stack.project?.organization?.id ?? "",
+        PROTOCOL_ORGANIZATION_NAME:
+          props.stack.project?.organization?.name ?? "",
+        PROTOCOL_PROJECT_ID: props.stack.project?.id ?? "",
+        PROTOCOL_PROJECT_NAME: props.stack.project?.name ?? "",
+        PROTOCOL_STACK_ID: props.stack.id ?? "",
+        PROTOCOL_STACK_NAME: props.stack.name ?? "",
 
-        DB_HOST: postgres.instanceEndpoint.hostname,
-        DB_PORT: postgres.instanceEndpoint.port.toString(),
-        DB_NAME: postgres.instanceIdentifier,
+        ...linkedResourceEnvVars,
 
-        // REDIS_HOST: redisCluster.attrRedisEndpointAddress,
-        // REDIS_PORT: redisCluster.attrRedisEndpointPort,
-        PORT: port,
+        PORT: port.toString(),
       },
       logging: this.logging,
     });
 
     this.container.addPortMappings({
-      containerPort: parseInt(port),
+      containerPort: parseInt(port.toString()),
       protocol: ecs.Protocol.TCP,
     });
 

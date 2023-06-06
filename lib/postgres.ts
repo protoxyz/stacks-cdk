@@ -27,8 +27,8 @@ interface PostgresDatabaseResourcesProps extends cdk.NestedStackProps {
 }
 export class PostgresDatabaseResources extends cdk.NestedStack {
   postgres: rds.DatabaseInstance;
-  dbCredentialsSecret: secretsmanager.Secret;
-  dbSecurityGroup: ec2.SecurityGroup;
+  creds: secretsmanager.Secret;
+  sg: ec2.SecurityGroup;
 
   constructor(
     scope: Construct,
@@ -46,7 +46,7 @@ export class PostgresDatabaseResources extends cdk.NestedStack {
       config.allocatedStorage ?? DEFAULT_ALLOCATED_STORAGE;
     const storageType = config.storageType ?? DEFAULT_STORAGE_TYPE;
 
-    this.dbCredentialsSecret = new secretsmanager.Secret(this, "db-creds", {
+    this.creds = new secretsmanager.Secret(this, "creds", {
       generateSecretString: {
         secretStringTemplate: JSON.stringify({ username: "postgres" }),
         excludePunctuation: true,
@@ -57,27 +57,24 @@ export class PostgresDatabaseResources extends cdk.NestedStack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    this.dbSecurityGroup = new ec2.SecurityGroup(this, "db-sg", {
+    this.sg = new ec2.SecurityGroup(this, "sg", {
       vpc,
     });
 
-    this.dbSecurityGroup.addIngressRule(
-      ec2.Peer.ipv4(vpc.vpcCidrBlock),
-      ec2.Port.tcp(5432)
-    );
+    this.sg.addIngressRule(ec2.Peer.ipv4(vpc.vpcCidrBlock), ec2.Port.tcp(5432));
 
     this.postgres = new rds.DatabaseInstance(this, "db", {
       engine: rds.DatabaseInstanceEngine.postgres({
         version: engineVersion,
       }),
-      credentials: rds.Credentials.fromSecret(this.dbCredentialsSecret),
+      credentials: rds.Credentials.fromSecret(this.creds),
       vpc,
       vpcSubnets: {
         subnetType: config.isPublic
           ? ec2.SubnetType.PUBLIC
           : ec2.SubnetType.PRIVATE_ISOLATED,
       },
-      securityGroups: [this.dbSecurityGroup],
+      securityGroups: [this.sg],
       instanceType,
       multiAz,
       allocatedStorage,
