@@ -95,7 +95,7 @@ export class ApiResources extends cdk.NestedStack {
     });
 
     this.serviceSecrets = new secretsmanager.Secret(this, `${id}Secrets`, {
-      secretName: `/secrets/${id}/production`,
+      secretName: `/services/${id}/secrets/production`,
     });
 
     // const pxyzApiSecrets = secretsmanager.Secret.fromSecretCompleteArn(

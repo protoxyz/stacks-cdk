@@ -44,7 +44,7 @@ export class ProtocolStack extends cdk.Stack {
     console.log("stackConfiguration", stackConfiguration);
 
     // Base Resources
-    this.baseResources = new BaseResources(this, "BaseResources");
+    this.baseResources = new BaseResources(this, "Base");
     const { vpc, cluster, isolatedSubnetGroup } = this.baseResources;
 
     const postgresDatabases = stackConfiguration.resources.filter(
@@ -54,10 +54,14 @@ export class ProtocolStack extends cdk.Stack {
     if (postgresDatabases.length > 0) {
       this.postgresDatabases = postgresDatabases.map(
         (postgresDatabase: any) =>
-          new PostgresDatabaseResources(this, "PostgresResources", {
-            vpc,
-            config: postgresDatabase.properties as any,
-          })
+          new PostgresDatabaseResources(
+            this,
+            `${postgresDatabase.id}.Postgres`,
+            {
+              vpc,
+              config: postgresDatabase.properties as any,
+            }
+          )
       );
     }
 
@@ -72,7 +76,7 @@ export class ProtocolStack extends cdk.Stack {
         const linkedDb = this
           .postgresDatabases?.[0] as PostgresDatabaseResources;
 
-        const api = new ApiResources(this, apiService.id, {
+        const api = new ApiResources(this, `${apiService.id}.WebService`, {
           cluster,
           postgres: linkedDb.postgres,
           dbCredentialsSecret: linkedDb.dbCredentialsSecret,
@@ -89,7 +93,7 @@ export class ProtocolStack extends cdk.Stack {
         // Pipeline
         const apiPipeline = new ApiPipelineResources(
           this,
-          `${apiService.id}Pipeline`,
+          `${apiService.id}.Pipeline`,
           {
             repository: api.repository,
             apiService: api.service,
