@@ -39,6 +39,8 @@ export class PostgresDatabaseResources extends cdk.NestedStack {
 
     const { vpc, config } = props;
 
+    console.log("POSTGRES CONFIG", config);
+
     const engineVersion = config.engineVersion ?? DEFAULT_ENGINE_VERSION;
     const instanceType = config.instanceType ?? DEFAULT_INSTANCE_TYPE;
     const multiAz = config.multiAz ?? DEFAULT_MULTI_AZ;

@@ -52,6 +52,8 @@ export class WebService extends cdk.NestedStack {
     super(scope, id, props);
     const { cluster, config, linkedResources } = props;
 
+    console.log("WEB SERVICE CONFIG", config);
+
     this.repository = new ecr.Repository(this, `${id}.Repository`, {
       autoDeleteImages: true,
       removalPolicy: cdk.RemovalPolicy.DESTROY,

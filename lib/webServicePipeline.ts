@@ -44,6 +44,8 @@ export class WebServicePipeline extends cdk.NestedStack {
     super(scope, id, props);
 
     const { repository, apiService, container, config } = props;
+    console.log("PIPELINE CONFIG");
+
     const [owner, repo] = config.repositoryUrl.split("/").slice(-2);
     const branch = config.branch || DEFAULT_BRANCH;
     const rootPath = config.rootPath || DEFAULT_ROOT_PATH;
