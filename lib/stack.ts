@@ -27,6 +27,7 @@ export class ProtocolStack extends cdk.Stack {
     console.log("stackConfiguration", stackConfiguration);
 
     // Base Resources
+    console.log("Adding base resources");
     this.baseResources = new BaseResources(this, "Base");
     const { cluster, vpc } = this.baseResources;
 
@@ -34,6 +35,7 @@ export class ProtocolStack extends cdk.Stack {
       (resource: any) => resource.type === "database_postgres"
     );
 
+    console.log("Adding Postgres Databases");
     if (postgresDatabases.length > 0) {
       this.postgresDatabases = postgresDatabases.map(
         (postgresDatabase: any) =>
@@ -55,8 +57,10 @@ export class ProtocolStack extends cdk.Stack {
       (service) => service.type === StackServiceType.web_server
     );
 
+    console.log("Adding Web Services");
     for (const service of webServices) {
       let linkedResources = {} as LinkedResources;
+      console.log(`Adding ${service.name}`);
 
       for (const envVar of service.environment) {
         if (envVar.valueFrom) {
@@ -97,11 +101,12 @@ export class ProtocolStack extends cdk.Stack {
       }
       this.webServices?.push(webService);
 
+      console.log(`Adding ${service.name} Build Pipeline`);
+
       // Pipeline
       const pipeline = new WebServicePipeline(this, `${service.id}.Pipeline`, {
         repository: webService.repository,
         apiService: webService.service,
-        // dbCredentialsSecret: linkedDb.dbCredentialsSecret,
         container: webService.container,
         stackId: stackConfiguration.id,
         serviceId: service.id,
@@ -120,15 +125,9 @@ export class ProtocolStack extends cdk.Stack {
       });
 
       pipeline.addDependency(this.baseResources);
-      // pipeline.addDependency(linkedDb);
       pipeline.addDependency(webService);
 
-      this.webServicePipelines?.push(pipeline);
+      this.webServicePipelines.push(pipeline);
     }
-
-    webServices.forEach((service: any) => {
-      // TODO - this is a hack to get the first postgres database
-      const linkedDb = this.postgresDatabases?.[0] as PostgresDatabaseResources;
-    });
   }
 }

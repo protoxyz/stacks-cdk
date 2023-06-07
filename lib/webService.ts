@@ -126,12 +126,13 @@ export class WebService extends cdk.NestedStack {
 
     for (const key in linkedResources) {
       const linkedResource = linkedResources[key];
-      console.log(key, linkedResource.resource);
 
       switch (linkedResource.stackResource.type) {
         case StackResourceType.database_postgres:
           {
             const creds = linkedResource.resource.creds;
+
+            console.log("creds", creds);
 
             linkedResourceSecrets[`${linkedResource.envVar.key}_DB_USERNAME`] =
               ecs.Secret.fromSecretsManager(creds, "username");
