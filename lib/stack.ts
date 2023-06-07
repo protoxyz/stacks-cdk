@@ -42,7 +42,7 @@ export class ProtocolStack extends cdk.Stack {
             `${postgresDatabase.id}.Postgres`,
             {
               vpc,
-              config: postgresDatabase.properties as any,
+              config: postgresDatabase.config,
             }
           )
       );
