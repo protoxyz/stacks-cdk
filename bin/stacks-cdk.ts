@@ -2,7 +2,7 @@
 import "source-map-support/register";
 import * as cdk from "aws-cdk-lib";
 import { ProtocolStack } from "../lib/stack";
-import stackJSON from "../../stack.json";
+import stackJSON from "../stack.json";
 import { Stack } from "@protoxyz/core";
 
 function parseBoolean(value: string | undefined): boolean | undefined {
