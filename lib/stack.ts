@@ -51,84 +51,76 @@ export class ProtocolStack extends cdk.Stack {
       }
     }
 
-    this.webServices = {};
-    this.webServicePipelines = {};
+    // this.webServices = {};
+    // this.webServicePipelines = {};
 
-    const webServices = stackConfiguration.services.filter(
-      (service) => service.type === StackServiceType.web_server
-    );
+    // const webServices = stackConfiguration.services.filter(
+    //   (service) => service.type === StackServiceType.web_server
+    // );
 
-    console.log("Adding Web Services");
-    for (const service of webServices) {
-      let linkedResources = {} as LinkedResources;
-      console.log(`Adding ${service.name}`);
+    // console.log("Adding Web Services");
+    // for (const service of webServices) {
+    //   let linkedResources = {} as LinkedResources;
+    //   console.log(`Adding ${service.name}`);
 
-      for (const envVar of service.environment) {
-        if (envVar.valueFrom) {
-          const resource = stackConfiguration.resources.find(
-            (resource) => resource.name === envVar.valueFrom
-          );
+    //   for (const envVar of service.environment) {
+    //     if (envVar.valueFrom) {
+    //       const resource = stackConfiguration.resources.find(
+    //         (resource) => resource.name === envVar.valueFrom
+    //       );
 
-          if (resource) {
-            switch (resource.type) {
-              case StackResourceType.database_postgres:
-                {
-                  linkedResources[envVar.valueFrom] = {
-                    envVar,
-                    stackResource: resource,
-                    resource: this.postgresDatabases[resource.id],
-                  };
-                }
-                break;
-            }
+    //       if (resource) {
+    //         switch (resource.type) {
+    //           case StackResourceType.database_postgres:
+    //             {
+    //               linkedResources[envVar.valueFrom] = {
+    //                 envVar,
+    //                 stackResource: resource,
+    //                 resource: this.postgresDatabases[resource.id],
+    //               };
+    //             }
+    //             break;
+    //         }
 
-            // TODO - add more resource types
-          }
-        }
-      }
+    //         // TODO - add more resource types
+    //       }
+    //     }
+    //   }
 
-      const webService = new WebService(this, `${service.id}.WebService`, {
-        cluster,
-        linkedResources,
-        firstDeploy: props.firstDeploy,
-        stack: stackConfiguration,
-        config: service.config,
-        environment: service.environment ?? [],
-      });
+    //   const webService = new WebService(this, `${service.id}.WebService`, {
+    //     cluster,
+    //     linkedResources,
+    //     firstDeploy: props.firstDeploy,
+    //     stack: stackConfiguration,
+    //     config: service.config,
+    //     environment: service.environment ?? [],
+    //   });
 
-      webService.addDependency(this.baseResources);
-      for (const linkedResource in linkedResources) {
-        webService.addDependency(linkedResources[linkedResource].resource);
-      }
-      this.webServices[service.id] = webService;
+    //   webService.addDependency(this.baseResources);
+    //   for (const linkedResource in linkedResources) {
+    //     webService.addDependency(linkedResources[linkedResource].resource);
+    //   }
+    //   this.webServices[service.id] = webService;
 
-      console.log(`Adding ${service.name} Build Pipeline`);
+    //   console.log(`Adding ${service.name} Build Pipeline`);
 
-      // Pipeline
-      const pipeline = new WebServicePipeline(this, `${service.id}.Pipeline`, {
-        repository: webService.repository,
-        apiService: webService.service,
-        container: webService.container,
-        stackId: stackConfiguration.id,
-        serviceId: service.id,
-        config: {
-          repositoryUrl: service.repository?.uri ?? "",
-          ...service.buildConfig,
-          // platform: apiService.platform,
-          // rootPath: apiService.path,
-          // installCommand: apiService.installCmd,
-          // buildCommand: apiService.buildCmd,
-          // startCommand: apiService.startCmd,
-          // branch: apiService.repository.branch,
-          // turboScope: apiService.turboScope,
-          // buildImage: apiService.buildImage,
-        },
-      });
+    //   // Pipeline
+    //   const pipeline = new WebServicePipeline(this, `${service.id}.Pipeline`, {
+    //     repository: webService.repository,
+    //     apiService: webService.service,
+    //     container: webService.container,
+    //     stackId: stackConfiguration.id,
+    //     serviceId: service.id,
+    //     config: {
+    //       repositoryUrl: service.repository?.uri ?? "",
+    //       ...service.buildConfig,
+    //     },
+    //   });
 
-      pipeline.addDependency(this.baseResources);
-      pipeline.addDependency(webService);
+    //   pipeline.addDependency(this.baseResources);
+    //   pipeline.addDependency(webService);
 
-      this.webServicePipelines[service.id] = pipeline;
-    }
+    //   this.webServicePipelines[service.id] = pipeline;
+    // }
   }
 }
