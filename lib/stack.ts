@@ -14,10 +14,10 @@ import { LinkedResources, ProtocolStackProps } from "./types";
 
 export class ProtocolStack extends cdk.Stack {
   baseResources: BaseResources;
-  postgresDatabases?: PostgresDatabaseResources[];
+  postgresDatabases: { [key: string]: PostgresDatabaseResources };
 
-  webServices?: WebService[];
-  webServicePipelines?: WebServicePipeline[];
+  webServices: { [key: string]: WebService };
+  webServicePipelines: { [key: string]: WebServicePipeline };
 
   constructor(scope: Construct, id: string, props: ProtocolStackProps) {
     super(scope, id, props);
@@ -36,22 +36,23 @@ export class ProtocolStack extends cdk.Stack {
     );
 
     console.log("Adding Postgres Databases");
+    this.postgresDatabases = {};
     if (postgresDatabases.length > 0) {
-      this.postgresDatabases = postgresDatabases.map(
-        (postgresDatabase: any) =>
+      for (const postgresDatabase of postgresDatabases) {
+        this.postgresDatabases[postgresDatabase.id] =
           new PostgresDatabaseResources(
             this,
             `${postgresDatabase.id}.Postgres`,
             {
               vpc,
-              config: postgresDatabase.config,
+              config: postgresDatabase.config as any,
             }
-          )
-      );
+          );
+      }
     }
 
-    this.webServices = [];
-    this.webServicePipelines = [];
+    this.webServices = {};
+    this.webServicePipelines = {};
 
     const webServices = stackConfiguration.services.filter(
       (service) => service.type === StackServiceType.web_server
@@ -72,18 +73,10 @@ export class ProtocolStack extends cdk.Stack {
             switch (resource.type) {
               case StackResourceType.database_postgres:
                 {
-                  const pg = this.postgresDatabases?.find(
-                    (db) => db.stackId === resource.id
-                  );
-                  console.log(
-                    resource.id,
-                    this.postgresDatabases?.map((db) => db.stackId)
-                  );
-                  console.log("pg", pg);
                   linkedResources[envVar.valueFrom] = {
                     envVar,
                     stackResource: resource,
-                    resource: pg,
+                    resource: this.postgresDatabases[resource.id],
                   };
                 }
                 break;
@@ -107,7 +100,7 @@ export class ProtocolStack extends cdk.Stack {
       for (const linkedResource in linkedResources) {
         webService.addDependency(linkedResources[linkedResource].resource);
       }
-      this.webServices?.push(webService);
+      this.webServices[service.id] = webService;
 
       console.log(`Adding ${service.name} Build Pipeline`);
 
@@ -135,7 +128,7 @@ export class ProtocolStack extends cdk.Stack {
       pipeline.addDependency(this.baseResources);
       pipeline.addDependency(webService);
 
-      this.webServicePipelines.push(pipeline);
+      this.webServicePipelines[service.id] = pipeline;
     }
   }
 }
