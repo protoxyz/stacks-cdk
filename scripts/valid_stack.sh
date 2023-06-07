@@ -3,10 +3,10 @@
 str=null
 FILENAME=stack.json
 
-if [ -f "${FILENAME}" ];then
-    if [ -s "${FILENAME}" ];then
+if [ -f "${FILENAME}" ]; then
+    if [ -s "${FILENAME}" ]; then
         CONTENTS=`cat ${FILENAME} | sed -e 's/^[[:space:]]*//'`
-        if [ $CONTENTS = "null" ]; then
+        if [[ "$CONTENTS" == "null" ]]; then
             echo "${FILENAME} is null"
             exit 1
         else 
