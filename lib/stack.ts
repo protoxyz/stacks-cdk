@@ -72,12 +72,18 @@ export class ProtocolStack extends cdk.Stack {
             switch (resource.type) {
               case StackResourceType.database_postgres:
                 {
+                  const pg = this.postgresDatabases?.find(
+                    (db) => db.stackId === resource.id
+                  );
+                  console.log(
+                    resource.id,
+                    this.postgresDatabases?.map((db) => db.stackId)
+                  );
+                  console.log("pg", pg);
                   linkedResources[envVar.valueFrom] = {
                     envVar,
                     stackResource: resource,
-                    resource: this.postgresDatabases?.find(
-                      (db) => db.stackId === resource.id
-                    ),
+                    resource: pg,
                   };
                 }
                 break;
