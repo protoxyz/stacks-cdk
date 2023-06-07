@@ -75,7 +75,9 @@ export class ProtocolStack extends cdk.Stack {
                   linkedResources[envVar.valueFrom] = {
                     envVar,
                     stackResource: resource,
-                    resource: this.postgresDatabases,
+                    resource: this.postgresDatabases?.find(
+                      (db) => db.stackId === resource.id
+                    ),
                   };
                 }
                 break;
