@@ -20,7 +20,7 @@
     "typescript": "~5.0.4"
   },
   "dependencies": {
-    "@protoxyz/core": "^1.0.6",
+    "@protoxyz/core": "^1.0.7",
     "aws-cdk-lib": "2.81.0",
     "constructs": "^10.0.0",
     "source-map-support": "^0.5.21"
