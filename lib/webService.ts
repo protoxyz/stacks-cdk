@@ -126,6 +126,7 @@ export class WebService extends cdk.NestedStack {
 
     for (const key in linkedResources) {
       const linkedResource = linkedResources[key];
+      console.log(key, linkedResource.resource);
 
       switch (linkedResource.stackResource.type) {
         case StackResourceType.database_postgres:
