@@ -10,6 +10,7 @@ import * as certificates from "aws-cdk-lib/aws-certificatemanager";
 import {
   Stack,
   StackResourceType,
+  StackService,
   StackServiceEnvironmentVariable,
   StackWebServiceConfig,
 } from "@protoxyz/core";
@@ -36,8 +37,9 @@ interface WebServiceProps extends cdk.NestedStackProps {
   linkedResources: LinkedResources;
   firstDeploy: boolean;
   stack: Stack;
-  environment: StackServiceEnvironmentVariable[];
-  config: StackWebServiceConfig;
+  service: StackService;
+  // environment: StackServiceEnvironmentVariable[];
+  // config: StackWebServiceConfig;
 }
 export class WebService extends cdk.NestedStack {
   repository: ecr.Repository;
@@ -50,7 +52,8 @@ export class WebService extends cdk.NestedStack {
 
   constructor(scope: Construct, id: string, props: WebServiceProps) {
     super(scope, id, props);
-    const { cluster, config, linkedResources } = props;
+    const { cluster, service, linkedResources } = props;
+    const { config, environment } = service;
 
     console.log("WEB SERVICE CONFIG", config);
 
@@ -158,7 +161,7 @@ export class WebService extends cdk.NestedStack {
       }
     }
 
-    this.container = this.taskDefinition.addContainer(`${id}Container`, {
+    this.container = this.taskDefinition.addContainer(service.id, {
       memoryLimitMiB,
       image: props.firstDeploy
         ? ecs.ContainerImage.fromEcrRepository(firstDeployRepository)
@@ -194,7 +197,7 @@ export class WebService extends cdk.NestedStack {
     // Instantiate FargateService with just cluster and task definition
     this.service = new ecs_patterns.ApplicationLoadBalancedFargateService(
       this,
-      `${id}Service`,
+      `${id}.Service`,
       {
         cluster,
         certificate: pxyzCloudCertificate,

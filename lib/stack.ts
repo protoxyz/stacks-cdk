@@ -92,8 +92,7 @@ export class ProtocolStack extends cdk.Stack {
         linkedResources,
         firstDeploy: props.firstDeploy,
         stack: stackConfiguration,
-        config: service.config,
-        environment: service.environment ?? [],
+        service,
       });
 
       webService.addDependency(this.baseResources);
